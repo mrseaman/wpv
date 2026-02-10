@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Wikipedia Pageview Recommender - A Transformer Autoencoder-based recommendation system that learns page embeddings from Wikipedia pageview patterns to find similar pages. Includes original course analysis code for event detection using FFT and Poisson modeling.
+Wikipedia Pageview Recommender - A CNN Autoencoder-based recommendation system that learns page embeddings from Wikipedia pageview patterns to find similar pages. Includes original course analysis code for event detection using FFT and Poisson modeling.
 
 ## Project Structure
 
@@ -13,7 +13,7 @@ wpv/
 ├── wpv_recommender/     # Main recommender package
 │   ├── api/             # FastAPI recommendation service
 │   ├── data/            # Data preprocessing and dataset
-│   ├── model/           # Transformer Autoencoder and embedding store
+│   ├── model/           # CNN Autoencoder and embedding store
 │   └── training/        # Training loop with early stopping
 ├── scripts/             # CLI scripts for the pipeline
 ├── data/                # Data files (not tracked in git)
@@ -31,7 +31,7 @@ wpv/
 ```bash
 # Recommender system pipeline
 python scripts/preprocess_data.py    # Preprocess pageview data
-python scripts/train_model.py        # Train Transformer Autoencoder
+python scripts/train_model.py        # Train CNN Autoencoder
 python scripts/extract_embeddings.py # Extract page embeddings to FAISS index
 python scripts/run_api.py            # Start FastAPI recommendation server
 
@@ -47,15 +47,15 @@ Dependencies: numpy, pandas, matplotlib, torch, faiss-cpu, fastapi, uvicorn, tqd
 
 - **wpv_recommender/config.py** - Model, training, and path configuration
 - **wpv_recommender/data/** - Data preprocessing and PyTorch dataset
-- **wpv_recommender/model/** - Transformer Autoencoder and embedding store
+- **wpv_recommender/model/** - CNN Autoencoder and embedding store
 - **wpv_recommender/training/** - Training loop with early stopping
 - **wpv_recommender/api/** - FastAPI recommendation service
 
 ### Model Details
 
-The `TransformerAutoencoder` learns embeddings from 90-day (2160 hourly) pageview sequences:
-- **Encoder**: Transformer encoder layers with attention pooling to bottleneck
-- **Decoder**: Learnable position queries + transformer decoder layers
+The `CNNAutoencoder` learns embeddings from 90-day (2160 hourly) pageview sequences:
+- **Encoder**: Strided 1D convolutions (channels: 32→64→128→256→256) with BatchNorm, GELU, and adaptive pooling to bottleneck
+- **Decoder**: Transposed 1D convolutions mirroring the encoder back to original sequence length
 - **Training**: MSE reconstruction loss, CosineAnnealingWarmRestarts scheduler
 
 ### API Endpoints

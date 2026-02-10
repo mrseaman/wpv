@@ -1,4 +1,4 @@
-"""Training loop for the Transformer Autoencoder."""
+"""Training loop for the CNN Autoencoder."""
 
 from pathlib import Path
 from typing import Optional
@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from ..config import TrainingConfig, PathConfig
-from ..model.transformer_ae import TransformerAutoencoder
+from ..model.cnn_ae import CNNAutoencoder
 
 
 class EarlyStopping:
@@ -52,11 +52,11 @@ class EarlyStopping:
 
 
 class Trainer:
-    """Trainer for the Transformer Autoencoder."""
+    """Trainer for the CNN Autoencoder."""
 
     def __init__(
         self,
-        model: TransformerAutoencoder,
+        model: CNNAutoencoder,
         train_loader: DataLoader,
         val_loader: DataLoader,
         config: TrainingConfig,
@@ -210,7 +210,7 @@ class Trainer:
             "best_val_loss": self.best_val_loss,
             "config": {
                 "seq_length": self.model.seq_length,
-                "d_model": self.model.d_model,
+                "channels": self.model.channels,
                 "embedding_dim": self.model.embedding_dim,
             },
         }
@@ -312,7 +312,7 @@ class Trainer:
 def load_model_for_inference(
     checkpoint_path: Path,
     device: Optional[torch.device] = None,
-) -> TransformerAutoencoder:
+) -> CNNAutoencoder:
     """
     Load a trained model for inference.
 
@@ -334,9 +334,9 @@ def load_model_for_inference(
     checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
     config = checkpoint["config"]
 
-    model = TransformerAutoencoder(
+    model = CNNAutoencoder(
         seq_length=config["seq_length"],
-        d_model=config["d_model"],
+        channels=tuple(config["channels"]),
         embedding_dim=config["embedding_dim"],
     )
     model.load_state_dict(checkpoint["model_state_dict"])

@@ -1,9 +1,8 @@
-"""Model components for the Transformer Autoencoder."""
+"""Model components for the CNN Autoencoder."""
 
-from .transformer_ae import TransformerAutoencoder
-from .positional_encoding import PositionalEncoding
+from .cnn_ae import CNNAutoencoder
 
-__all__ = ["TransformerAutoencoder", "PositionalEncoding", "EmbeddingStore"]
+__all__ = ["CNNAutoencoder", "EmbeddingStore"]
 
 
 def __getattr__(name):

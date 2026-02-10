@@ -7,20 +7,13 @@ from typing import Optional
 
 @dataclass
 class ModelConfig:
-    """Transformer Autoencoder model configuration."""
+    """CNN Autoencoder model configuration."""
 
     # Input dimensions
     seq_length: int = 2160  # 90 days * 24 hours
-    input_dim: int = 1  # Single pageview value per timestep
 
-    # Transformer dimensions
-    d_model: int = 128
-    n_heads: int = 8
-    d_ff: int = 512
-
-    # Architecture
-    n_encoder_layers: int = 4
-    n_decoder_layers: int = 4
+    # CNN channels at each encoder stage
+    channels: tuple[int, ...] = (32, 64, 128, 256, 256)
 
     # Regularization
     dropout: float = 0.1

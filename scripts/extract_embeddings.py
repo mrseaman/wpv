@@ -56,7 +56,7 @@ def main():
     checkpoint_path = args.checkpoint or config.paths.get_checkpoint_path(epoch=None)
 
     print("=" * 60)
-    print("Wikipedia Pageview Recommender - Embedding Extraction")
+    print("Wikipedia Pageview Recommender - CNN Embedding Extraction")
     print("=" * 60)
 
     # Set device

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Script to train the Transformer Autoencoder model."""
+"""Script to train the CNN Autoencoder model."""
 
 import argparse
 import sys
@@ -13,13 +13,13 @@ import torch
 from wpv_recommender.config import get_config
 from wpv_recommender.data.preprocessing import PageviewDataLoader
 from wpv_recommender.data.dataset import create_data_loaders
-from wpv_recommender.model.transformer_ae import TransformerAutoencoder
+from wpv_recommender.model.cnn_ae import CNNAutoencoder
 from wpv_recommender.training.trainer import Trainer
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Train the Transformer Autoencoder for Wikipedia pageview embeddings."
+        description="Train the CNN Autoencoder for Wikipedia pageview embeddings."
     )
     parser.add_argument(
         "--data",
@@ -90,15 +90,11 @@ def main():
 
     # Create model
     print("\nCreating model...")
-    model = TransformerAutoencoder(
+    model = CNNAutoencoder(
         seq_length=config.model.seq_length,
-        d_model=config.model.d_model,
-        n_heads=config.model.n_heads,
-        d_ff=config.model.d_ff,
-        n_encoder_layers=config.model.n_encoder_layers,
-        n_decoder_layers=config.model.n_decoder_layers,
-        dropout=config.model.dropout,
+        channels=config.model.channels,
         embedding_dim=config.model.embedding_dim,
+        dropout=config.model.dropout,
     )
     print(f"Model: {model}")
 

@@ -13,13 +13,13 @@ class ModelConfig:
     seq_length: int = 2160  # 90 days * 24 hours
 
     # CNN channels at each encoder stage
-    channels: tuple[int, ...] = (32, 64, 128, 256, 256)
+    channels: tuple[int, ...] = (64, 128, 256, 256, 512, 512, 512)
 
     # Regularization
     dropout: float = 0.1
 
     # Embedding dimension (bottleneck)
-    embedding_dim: int = 128
+    embedding_dim: int = 256
 
 
 @dataclass
@@ -27,21 +27,21 @@ class TrainingConfig:
     """Training configuration."""
 
     # Data
-    batch_size: int = 64
+    batch_size: int = 128
     train_split: float = 0.9
     num_workers: int = 4
 
     # Optimization
-    learning_rate: float = 1e-4
+    learning_rate: float = 3e-4
     weight_decay: float = 1e-5
-    max_epochs: int = 100
+    max_epochs: int = 500
 
     # Scheduler
-    t_0: int = 10  # CosineAnnealingWarmRestarts initial period
+    t_0: int = 20  # CosineAnnealingWarmRestarts initial period
     t_mult: int = 2  # Period multiplier
 
     # Early stopping
-    patience: int = 10
+    patience: int = 20
     min_delta: float = 1e-4
 
     # Gradient clipping

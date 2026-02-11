@@ -54,9 +54,9 @@ Dependencies: numpy, pandas, matplotlib, torch, faiss-cpu, fastapi, uvicorn, tqd
 ### Model Details
 
 The `CNNAutoencoder` learns embeddings from 90-day (2160 hourly) pageview sequences:
-- **Encoder**: Strided 1D convolutions (channels: 32→64→128→256→256) with BatchNorm, GELU, and adaptive pooling to bottleneck
+- **Encoder**: 7 strided 1D convolutions (channels: 64→128→256→256→512→512→512) with BatchNorm, GELU, reducing spatial dim to 17, then flattened and projected to 256-dim embedding
 - **Decoder**: Transposed 1D convolutions mirroring the encoder back to original sequence length
-- **Training**: MSE reconstruction loss, CosineAnnealingWarmRestarts scheduler
+- **Training**: MSE reconstruction loss, CosineAnnealingWarmRestarts scheduler (T_0=20, T_mult=2), AdamW (lr=3e-4), early stopping (patience=20)
 
 ### API Endpoints
 

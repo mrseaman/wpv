@@ -58,15 +58,19 @@ class CNNAutoencoder(nn.Module):
             in_ch = out_ch
 
         self.encoder_conv = nn.Sequential(*encoder_layers)
-        self.encoder_pool = nn.AdaptiveAvgPool1d(1)
-        self.bottleneck_projection = nn.Linear(channels[-1], embedding_dim)
+        self.bottleneck_projection = None  # Initialized after computing compressed_len
 
         # Compute compressed length for decoder input
-        # Run a dummy forward pass to determine the spatial size before pooling
+        # Run a dummy forward pass to determine the spatial size after convolutions
         with torch.no_grad():
             dummy = torch.zeros(1, 1, seq_length)
             dummy_out = self.encoder_conv(dummy)
             self._compressed_len = dummy_out.shape[2]
+
+        # Bottleneck: flatten conv output then project to embedding
+        self.bottleneck_projection = nn.Linear(
+            channels[-1] * self._compressed_len, embedding_dim
+        )
 
         # Build decoder
         self.embedding_expansion = nn.Linear(
@@ -83,29 +87,16 @@ class CNNAutoencoder(nn.Module):
         for i in range(len(rev_channels) - 1):
             in_ch = rev_channels[i]
             out_ch = rev_channels[i + 1]
-            if i == len(rev_channels) - 2:
-                # Second-to-last transposed conv (mirrors first encoder conv)
-                decoder_layers.append(
-                    nn.ConvTranspose1d(
-                        in_ch,
-                        out_ch,
-                        kernel_size=5,
-                        stride=2,
-                        padding=2,
-                        output_padding=output_paddings[i],
-                    )
+            decoder_layers.append(
+                nn.ConvTranspose1d(
+                    in_ch,
+                    out_ch,
+                    kernel_size=5,
+                    stride=2,
+                    padding=2,
+                    output_padding=output_paddings[i],
                 )
-            else:
-                decoder_layers.append(
-                    nn.ConvTranspose1d(
-                        in_ch,
-                        out_ch,
-                        kernel_size=5,
-                        stride=2,
-                        padding=2,
-                        output_padding=output_paddings[i],
-                    )
-                )
+            )
             decoder_layers.append(nn.BatchNorm1d(out_ch))
             decoder_layers.append(nn.GELU())
             if dropout > 0:
@@ -195,8 +186,7 @@ class CNNAutoencoder(nn.Module):
             x = x.unsqueeze(1)  # [batch, 1, seq_len]
 
         x = self.encoder_conv(x)  # [batch, channels[-1], compressed_len]
-        x = self.encoder_pool(x)  # [batch, channels[-1], 1]
-        x = x.squeeze(-1)  # [batch, channels[-1]]
+        x = x.flatten(1)  # [batch, channels[-1] * compressed_len]
         embedding = self.bottleneck_projection(x)  # [batch, embedding_dim]
 
         return embedding

@@ -19,7 +19,10 @@ class ModelConfig:
     dropout: float = 0.1
 
     # Embedding dimension (bottleneck)
-    embedding_dim: int = 256
+    embedding_dim: int = 512
+
+    # Hidden dimension in bottleneck MLP
+    bottleneck_hidden_dim: int = 1024
 
 
 @dataclass
@@ -36,9 +39,10 @@ class TrainingConfig:
     weight_decay: float = 1e-5
     max_epochs: int = 500
 
-    # Scheduler
-    t_0: int = 20  # CosineAnnealingWarmRestarts initial period
-    t_mult: int = 2  # Period multiplier
+    # Scheduler (ReduceLROnPlateau)
+    scheduler_factor: float = 0.5  # Multiply LR by this on plateau
+    scheduler_patience: int = 5  # Epochs to wait before reducing LR
+    min_lr: float = 1e-6  # LR floor
 
     # Early stopping
     patience: int = 20

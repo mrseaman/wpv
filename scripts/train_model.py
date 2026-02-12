@@ -95,6 +95,7 @@ def main():
         channels=config.model.channels,
         embedding_dim=config.model.embedding_dim,
         dropout=config.model.dropout,
+        bottleneck_hidden_dim=config.model.bottleneck_hidden_dim,
     )
     print(f"Model: {model}")
 

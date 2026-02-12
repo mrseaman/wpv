@@ -6,7 +6,7 @@ from typing import Optional
 import torch
 import torch.nn as nn
 from torch.optim import AdamW
-from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -104,10 +104,12 @@ class Trainer:
         )
 
         # Learning rate scheduler
-        self.scheduler = CosineAnnealingWarmRestarts(
+        self.scheduler = ReduceLROnPlateau(
             self.optimizer,
-            T_0=config.t_0,
-            T_mult=config.t_mult,
+            mode="min",
+            factor=config.scheduler_factor,
+            patience=config.scheduler_patience,
+            min_lr=config.min_lr,
         )
 
         # Early stopping
@@ -212,6 +214,7 @@ class Trainer:
                 "seq_length": self.model.seq_length,
                 "channels": self.model.channels,
                 "embedding_dim": self.model.embedding_dim,
+                "bottleneck_hidden_dim": self.model.bottleneck_hidden_dim,
             },
         }
 
@@ -270,11 +273,11 @@ class Trainer:
             val_loss = self.validate()
             self.val_losses.append(val_loss)
 
-            # Update scheduler
-            self.scheduler.step()
+            # Update scheduler (ReduceLROnPlateau uses val_loss)
+            self.scheduler.step(val_loss)
 
             # Log
-            lr = self.scheduler.get_last_lr()[0]
+            lr = self.optimizer.param_groups[0]["lr"]
             print(
                 f"Epoch {epoch + 1}/{self.config.max_epochs} - "
                 f"Train Loss: {train_loss:.4f}, "
@@ -338,6 +341,7 @@ def load_model_for_inference(
         seq_length=config["seq_length"],
         channels=tuple(config["channels"]),
         embedding_dim=config["embedding_dim"],
+        bottleneck_hidden_dim=config.get("bottleneck_hidden_dim", 0),
     )
     model.load_state_dict(checkpoint["model_state_dict"])
     model = model.to(device)

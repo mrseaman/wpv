@@ -22,6 +22,7 @@ class CNNAutoencoder(nn.Module):
         channels: tuple[int, ...] = (32, 64, 128, 256, 256),
         embedding_dim: int = 128,
         dropout: float = 0.1,
+        bottleneck_hidden_dim: int = 0,
     ):
         """
         Initialize the CNN Autoencoder.
@@ -37,6 +38,7 @@ class CNNAutoencoder(nn.Module):
         self.seq_length = seq_length
         self.channels = channels
         self.embedding_dim = embedding_dim
+        self.bottleneck_hidden_dim = bottleneck_hidden_dim
 
         # Build encoder
         encoder_layers = []
@@ -68,14 +70,21 @@ class CNNAutoencoder(nn.Module):
             self._compressed_len = dummy_out.shape[2]
 
         # Bottleneck: flatten conv output then project to embedding
-        self.bottleneck_projection = nn.Linear(
-            channels[-1] * self._compressed_len, embedding_dim
-        )
-
-        # Build decoder
-        self.embedding_expansion = nn.Linear(
-            embedding_dim, channels[-1] * self._compressed_len
-        )
+        flat_dim = channels[-1] * self._compressed_len
+        if bottleneck_hidden_dim > 0:
+            self.bottleneck_projection = nn.Sequential(
+                nn.Linear(flat_dim, bottleneck_hidden_dim),
+                nn.GELU(),
+                nn.Linear(bottleneck_hidden_dim, embedding_dim),
+            )
+            self.embedding_expansion = nn.Sequential(
+                nn.Linear(embedding_dim, bottleneck_hidden_dim),
+                nn.GELU(),
+                nn.Linear(bottleneck_hidden_dim, flat_dim),
+            )
+        else:
+            self.bottleneck_projection = nn.Linear(flat_dim, embedding_dim)
+            self.embedding_expansion = nn.Linear(embedding_dim, flat_dim)
 
         decoder_layers = []
         rev_channels = list(reversed(channels))

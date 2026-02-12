@@ -48,6 +48,9 @@ class TrainingConfig:
     patience: int = 20
     min_delta: float = 1e-4
 
+    # Loss
+    spectral_loss_weight: float = 0.1  # Weight for FFT spectral loss
+
     # Gradient clipping
     max_grad_norm: float = 1.0
 

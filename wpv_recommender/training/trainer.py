@@ -5,6 +5,7 @@ from typing import Optional
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
@@ -12,6 +13,13 @@ from tqdm import tqdm
 
 from ..config import TrainingConfig, PathConfig
 from ..model.cnn_ae import CNNAutoencoder
+
+
+def spectral_loss(x: torch.Tensor, x_hat: torch.Tensor) -> torch.Tensor:
+    """Compute L1 loss on log-magnitude FFT spectra."""
+    X = torch.fft.rfft(x, dim=-1)
+    X_hat = torch.fft.rfft(x_hat, dim=-1)
+    return F.l1_loss(torch.log1p(X_hat.abs()), torch.log1p(X.abs()))
 
 
 class EarlyStopping:
@@ -124,15 +132,31 @@ class Trainer:
         self.train_losses: list[float] = []
         self.val_losses: list[float] = []
 
-    def train_epoch(self) -> float:
+    def _compute_loss(
+        self, reconstructed: torch.Tensor, target: torch.Tensor
+    ) -> tuple[torch.Tensor, float, float]:
+        """
+        Compute combined MSE + spectral loss.
+
+        Returns:
+            Tuple of (total_loss, mse_value, spectral_value)
+        """
+        mse = self.criterion(reconstructed, target)
+        spec = spectral_loss(target, reconstructed)
+        total = mse + self.config.spectral_loss_weight * spec
+        return total, mse.item(), spec.item()
+
+    def train_epoch(self) -> tuple[float, float, float]:
         """
         Train for one epoch.
 
         Returns:
-            Average training loss for the epoch
+            Tuple of (avg_total_loss, avg_mse_loss, avg_spectral_loss)
         """
         self.model.train()
         total_loss = 0.0
+        total_mse = 0.0
+        total_spec = 0.0
         num_batches = 0
 
         pbar = tqdm(self.train_loader, desc=f"Epoch {self.current_epoch + 1} [Train]")
@@ -144,7 +168,7 @@ class Trainer:
             reconstructed, _ = self.model(batch)
 
             # Compute loss
-            loss = self.criterion(reconstructed, batch)
+            loss, mse_val, spec_val = self._compute_loss(reconstructed, batch)
 
             # Backward pass
             loss.backward()
@@ -158,23 +182,26 @@ class Trainer:
             self.optimizer.step()
 
             total_loss += loss.item()
+            total_mse += mse_val
+            total_spec += spec_val
             num_batches += 1
 
             pbar.set_postfix({"loss": f"{loss.item():.4f}"})
 
-        avg_loss = total_loss / num_batches
-        return avg_loss
+        return total_loss / num_batches, total_mse / num_batches, total_spec / num_batches
 
     @torch.no_grad()
-    def validate(self) -> float:
+    def validate(self) -> tuple[float, float, float]:
         """
         Run validation.
 
         Returns:
-            Average validation loss
+            Tuple of (avg_total_loss, avg_mse_loss, avg_spectral_loss)
         """
         self.model.eval()
         total_loss = 0.0
+        total_mse = 0.0
+        total_spec = 0.0
         num_batches = 0
 
         pbar = tqdm(self.val_loader, desc=f"Epoch {self.current_epoch + 1} [Val]")
@@ -182,15 +209,16 @@ class Trainer:
             batch = batch.to(self.device)
 
             reconstructed, _ = self.model(batch)
-            loss = self.criterion(reconstructed, batch)
+            loss, mse_val, spec_val = self._compute_loss(reconstructed, batch)
 
             total_loss += loss.item()
+            total_mse += mse_val
+            total_spec += spec_val
             num_batches += 1
 
             pbar.set_postfix({"loss": f"{loss.item():.4f}"})
 
-        avg_loss = total_loss / num_batches
-        return avg_loss
+        return total_loss / num_batches, total_mse / num_batches, total_spec / num_batches
 
     def save_checkpoint(self, path: Path, is_best: bool = False) -> None:
         """
@@ -266,11 +294,11 @@ class Trainer:
             self.current_epoch = epoch
 
             # Train
-            train_loss = self.train_epoch()
+            train_loss, train_mse, train_spec = self.train_epoch()
             self.train_losses.append(train_loss)
 
             # Validate
-            val_loss = self.validate()
+            val_loss, val_mse, val_spec = self.validate()
             self.val_losses.append(val_loss)
 
             # Update scheduler (ReduceLROnPlateau uses val_loss)
@@ -280,8 +308,8 @@ class Trainer:
             lr = self.optimizer.param_groups[0]["lr"]
             print(
                 f"Epoch {epoch + 1}/{self.config.max_epochs} - "
-                f"Train Loss: {train_loss:.4f}, "
-                f"Val Loss: {val_loss:.4f}, "
+                f"Train: {train_loss:.4f} (MSE: {train_mse:.4f}, Spec: {train_spec:.4f}), "
+                f"Val: {val_loss:.4f} (MSE: {val_mse:.4f}, Spec: {val_spec:.4f}), "
                 f"LR: {lr:.2e}"
             )
 
